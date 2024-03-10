@@ -69,6 +69,8 @@ void ResultFrame::InsertItemToList(const seek_item_t& data)
     data_list->InsertItem(num_items++, data.path, idx);
 
 }
+#define SE_SUCCEEDED(h) ((std::size_t(h)) > 32)
+
 void ResultFrame::OnItemClicked(wxListEvent& event)
 {
     int index = event.GetIndex();
@@ -80,7 +82,9 @@ void ResultFrame::OnItemClicked(wxListEvent& event)
 
     auto wide = convertToWideString(s);
 
-    ShellExecute(NULL, TEXT("open"), TEXT("explorer.exe"), wide.c_str(), NULL, SW_SHOWDEFAULT);
+    if (!SE_SUCCEEDED(ShellExecute(NULL, TEXT("open"), TEXT("explorer.exe"), wide.c_str(), NULL, SW_SHOWDEFAULT))) {
+        wxMessageBox(std::format("ShellExecute failed with: {}", fs::get_last_error()), "Error", wxOK | wxICON_ERROR);
+    }
 
 }
 
