@@ -53,3 +53,8 @@ To access Seeker GUI, right-click in an empty space within the File Explorer win
 4. Enter the string you want to search for within files located in the selected directory.
 5. Click the "Search" button.
 6. The tool will display a result window listing all files containing the specified string, along with the line numbers where the string is found.
+
+## Libraries
+
+[wxWidgets](https://www.wxwidgets.org/)
+- Note: Not included in the project, so this library needs to be installed separately!
