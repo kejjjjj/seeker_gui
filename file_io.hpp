@@ -16,7 +16,7 @@ namespace fs
 	};
 
 	//std::string exe_file_name();
-	//std::string exe_path();
+	std::string exe_path();
 	//std::string root_path();
 	std::string get_extension(const std::string& path);
 	std::string previous_directory(std::string& directory);

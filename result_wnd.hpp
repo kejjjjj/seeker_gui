@@ -18,7 +18,7 @@ class ResultFrame : public wxFrame
 {
 public:
 	ResultFrame() = delete;
-	explicit ResultFrame(shared_data_thread& d, const std::string& title, int timer=1000)
+	explicit ResultFrame(shared_data_thread& d, const std::string& title, int timer=100)
 		: wxFrame(nullptr, wxID_ANY, title), result_data(d)
 	{
 		data_list = new wxListCtrl(this, wxID_ANY, wxDefaultPosition, { GetSize().x, wxDefaultSize.y }, wxLC_REPORT | wxLC_SINGLE_SEL);
@@ -37,7 +37,7 @@ protected:
 	wxTimer* result_timer = 0;
 	wxListCtrl* data_list = 0;
 	wxImageList* icon_list = 0;
-	int num_items = 0;
+	long num_items = 0;
 
 	void MakeWindowCentered();
 
@@ -47,10 +47,14 @@ protected:
 
 	virtual void OnResize(wxSizeEvent& event) = 0;
 
+	[[nodiscard]] constexpr auto TooManyItems() const noexcept {
+		return num_items + 1 > std::numeric_limits<long>::max();
+	}
+
 	NO_COPY_CONSTRUCTOR(ResultFrame);
 };
 
-class FileFrame : public ResultFrame
+class FileFrame final : public ResultFrame
 {
 public:
 	FileFrame() = delete;
@@ -62,7 +66,7 @@ private:
 	void OnResize(wxSizeEvent& event) override;
 };
 
-class FolderFrame : public ResultFrame
+class FolderFrame final : public ResultFrame
 {
 public:
 	FolderFrame() = delete;
@@ -73,7 +77,7 @@ public:
 private:
 	void OnResize(wxSizeEvent& event) override;
 };
-class StringFrame : public ResultFrame
+class StringFrame final : public ResultFrame
 {
 public:
 	StringFrame() = delete;

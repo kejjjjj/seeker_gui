@@ -1,9 +1,15 @@
 #include "seek_file.hpp"
+#include "seeker_gui.hpp"
 
+#include "file_io.hpp"
+
+#include <Windows.h>
+#include <vector>
 
 SHFILEINFO shfi;
 #include <shellapi.h>
-static void find_file_recursively(data_thread& data, const std::string_view& source, const std::string_view& filename)
+static void find_file_recursively(data_thread& data, const std::string_view& source,
+	const std::string_view& filename, const std::regex* regex)
 {
 	std::vector<std::string> directories;
 	auto& r = data.data;
@@ -14,6 +20,9 @@ static void find_file_recursively(data_thread& data, const std::string_view& sou
 	try {
 		for (const auto& entry : _fs::directory_iterator(source)) {
 			
+			if (containsNonASCII(entry.path().wstring()))
+				continue;
+
 			auto str = entry.path().string();
 
 			if (entry.is_directory()) {
@@ -24,8 +33,15 @@ static void find_file_recursively(data_thread& data, const std::string_view& sou
 			std::lock_guard<std::mutex> lock(data.mtx);
 
 			r.num_searches++;
+			r.current_file = str;
 
-			if (filename == fs::get_file_name(str)) {
+			if (regex && !std::regex_search(str, *regex)) {
+				continue;
+			}
+
+
+
+			if (fs::get_file_name(str).contains(filename)) {
 				
 				auto name = convertToWideString(str.c_str());
 
@@ -44,7 +60,7 @@ static void find_file_recursively(data_thread& data, const std::string_view& sou
 	}
 	
 	for (auto& dir : directories) {
-		find_file_recursively(data, dir, filename);
+		find_file_recursively(data, dir, filename, regex);
 	}
 
 	return;
@@ -55,7 +71,8 @@ void find_file(data_thread& data, const std::string& source, const std::string f
 
 	auto old = steady_clock::now();
 
-	find_file_recursively(data, source, filename);
+	auto regex = std::regex(data.regexStr);
+	find_file_recursively(data, source, filename, data.regexStr.size() ? &regex : nullptr);
 		
 	auto now = steady_clock::now();
 	std::chrono::duration<decltype(data.data.duration)> difference = now - old;

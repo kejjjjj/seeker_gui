@@ -69,3 +69,12 @@ inline std::wstring convertToWideString(const std::string& string) {
 
 	return wide_str;
 }
+
+[[nodiscard]] inline bool containsNonASCII(const std::wstring& s)
+{
+	for (auto& ch : s) {
+		if (ch > 127)
+			return true;
+	}
+	return false;
+}

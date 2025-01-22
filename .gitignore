@@ -6,6 +6,10 @@
 # a big library
 x64_libs/
 
+# vs stuff
+seeker_gui.sln
+seeker_gui.vcxpro*
+
 # User-specific files
 *.rsuser
 *.suo

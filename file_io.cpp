@@ -6,11 +6,10 @@
 //	GetModuleFileName(NULL, buffer, MAX_PATH);
 //	return std::string(buffer);
 //}
-//std::string fs::exe_path()
-//{
-//	std::string f = exe_file_name();
-//	return f.substr(0, f.find_last_of("\\/"));
-//}
+std::string fs::exe_path()
+{
+	return _fs::current_path().string();
+}
 //std::string fs::root_path()
 //{
 //	return exe_path() + "\\agent";

@@ -37,6 +37,7 @@ struct seek_results_t
 	float duration = 0.f;
 	std::size_t num_searches = 0ull;
 	std::size_t num_skips = 0ull;
+	std::string current_file;
 };
 
 struct data_thread
@@ -45,6 +46,7 @@ struct data_thread
 	std::thread thread;
 	seek_results_t data = {};
 	bool active = false;
+	std::string regexStr;
 };
 
 using steady_clock = std::chrono::steady_clock;

@@ -1,6 +1,5 @@
 #pragma once
+#include <string>
+#include <regex>
 
-#include "seeker_gui.hpp"
-#include "file_io.hpp"
-
-void find_folder(data_thread& data, const std::string& source, const std::string filename);
+void find_folder(struct data_thread& data, const std::string& source, const std::string filename);

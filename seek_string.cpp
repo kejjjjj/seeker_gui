@@ -1,12 +1,18 @@
 #include "seek_file.hpp"
+#include "seeker_gui.hpp"
 
+#include "file_io.hpp"
+
+#include <Windows.h>
+#include <vector>
 
 SHFILEINFO shfi_string;
 
 
 static std::optional<search_positions> parse_file(seek_results_t& results, const std::string_view& file, const std::string_view& target);
 
-static void find_string_recursively(data_thread& data, const std::string_view& source, const std::string_view& target)
+static void find_string_recursively(data_thread& data, const std::string_view& source,
+	const std::string_view& target, const std::regex* regex)
 {
 	std::vector<std::string> directories;
 
@@ -17,15 +23,25 @@ static void find_string_recursively(data_thread& data, const std::string_view& s
 
 	try {
 		for (const auto& entry : _fs::directory_iterator(source)) {
+			
+			if (containsNonASCII(entry.path().wstring()))
+				continue;
+			
 			auto str = entry.path().string();
 
 			if (entry.is_directory()) {
 				directories.push_back(str);
 				continue;
 			}
-
 			std::lock_guard<std::mutex> lock(data.mtx);
+
+			r.current_file = str;
 			r.num_searches++;
+
+			if (regex && !std::regex_search(str, *regex)) {
+				continue;
+			}
+
 
 			if (auto v = parse_file(r, str, target)) {
 				auto name = convertToWideString(str.c_str());
@@ -43,7 +59,7 @@ static void find_string_recursively(data_thread& data, const std::string_view& s
 		}
 
 		for (auto& dir : directories) {
-			find_string_recursively(data, dir, target);
+			find_string_recursively(data, dir, target, regex);
 		}
 	}
 	catch ([[maybe_unused]] std::filesystem::filesystem_error& ex) {
@@ -56,7 +72,9 @@ void find_string(data_thread& data, const std::string& source, const std::string
 {
 	auto old = steady_clock::now();
 
-	find_string_recursively(data, source, filename);
+	auto regex = std::regex(data.regexStr);
+
+	find_string_recursively(data, source, filename, data.regexStr.size() ? &regex : nullptr);
 
 	auto now = steady_clock::now();
 	std::chrono::duration<decltype(data.data.duration)> difference = now - old;
@@ -109,7 +127,7 @@ std::optional<search_positions> parse_file(seek_results_t& results, const std::s
 			}
 			else if (ch == keyword[consecutive_characters] && consecutive_characters < num_chars) {
 
-				buffer.push_back(ch);
+				buffer.push_back(static_cast<char>(ch));
 				consecutive_characters++;
 				continue;
 			}

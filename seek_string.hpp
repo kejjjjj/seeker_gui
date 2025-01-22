@@ -1,7 +1,7 @@
 #pragma once
 
-#include "seeker_gui.hpp"
-#include "file_io.hpp"
+#include <string>
+#include <regex>
 
-void find_string(data_thread& data, const std::string& source, const std::string filename);
+void find_string(struct data_thread& data, const std::string& source, const std::string filename);
 

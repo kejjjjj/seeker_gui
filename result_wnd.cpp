@@ -2,6 +2,8 @@
 #include "utils.hpp"
 #include "file_io.hpp"
 
+#include <type_traits>
+
 void ResultFrame::MakeWindowCentered()
 {
     constexpr auto x = 320;
@@ -22,15 +24,21 @@ void ResultFrame::MakeWindowCentered()
     //SetSize({ fixed.w, fixed.h });
 
 }
-void ResultFrame::OnTimer(wxTimerEvent& event)
+void ResultFrame::OnTimer([[maybe_unused]] wxTimerEvent& event)
 {
-    if (!result_data->active && result_data->data.results.empty()) {
-        SetStatusText(std::format("Found: {}", num_items));
+    if (TooManyItems() || !result_data->active && result_data->data.results.empty()) {
+
+        if(TooManyItems())
+            SetStatusText(std::format("Exceeded: {} items", num_items));
+        else
+            SetStatusText(std::format("Found: {}", num_items));
+
         result_timer->Stop();
         return;
     }
 
-    SetStatusText(std::format("Found: {} | Searched: {}", num_items, result_data->data.num_searches));
+
+    SetStatusText(std::format("Found: {} | Searched: {} | {}", num_items, result_data->data.num_searches, result_data->data.current_file));
 
     if (result_data->data.results.empty())
         return;
@@ -59,6 +67,9 @@ FileFrame::FileFrame(shared_data_thread &d, const std::string& title) : ResultFr
 void ResultFrame::InsertItemToList(const seek_item_t& data)
 {
     wxIcon icon;
+
+    if (TooManyItems())
+        return;
 
     icon_list = data_list->GetImageList(wxIMAGE_LIST_SMALL);
 
