@@ -84,7 +84,7 @@ private:
     void OnEnterPressed(wxCommandEvent& event);
 
     wxTextCtrl* input_box = 0;
-    wxTextCtrl* regex = 0;
+    wxCheckBox* regex = 0;
     wxButton* search_button = 0;
     shared_data_thread seek_data;
 
@@ -196,9 +196,9 @@ MyFrame::MyFrame()
     input_box = new wxTextCtrl(panel, ID_TEXTBOX, wxEmptyString, wxDefaultPosition, wxDefaultSize, flags);
     input_box->SetHint("Search...");
 
-    regex = new wxTextCtrl(panel, ID_TEXTBOX, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxTE_PROCESS_ENTER | wxTE_CENTER);
-    regex->SetHint("Regex...");
+    regex = new wxCheckBox(panel, wxID_ANY, "Regex");
     regex->SetToolTip("Filter files and directories with a regular expression");
+
 
     search_button = new wxButton(panel, ID_SEARCH_BUTTON, "Search");
     
@@ -231,6 +231,7 @@ void MyFrame::OnAbout([[maybe_unused]] wxCommandEvent& event)
 {
     wxMessageBox("Made by xkejj\nhttps://github.com/kejjjjj/seeker_gui", "About", wxOK | wxICON_INFORMATION);
 }
+
 void MyFrame::SearchButtonClicked([[maybe_unused]] wxCommandEvent& event)
 {
     auto str = input_box->GetValue();
@@ -239,12 +240,36 @@ void MyFrame::SearchButtonClicked([[maybe_unused]] wxCommandEvent& event)
         wxMessageBox("Passed invalid input to the text field", "Error", wxOK | wxICON_ERROR);
         return;
     }
+    auto result_string = str.ToStdString();
+
+    if (regex->GetValue() && open_mode == "string") {
+        if (wxMessageBox("This is a very slow process, are you sure you want to continue?", "Warning", wxYES_NO | wxICON_WARNING) == wxNO) {
+            return;
+        }
+    }
 
     seek_data = std::make_shared<data_thread>();
     seek_data->active = true;
-    seek_data->regexStr = regex->GetValue().ToStdString();
 
-    auto result_string = str.ToStdString();
+    if (regex->GetValue()) {
+
+
+
+        seek_data->searchData.type = ESearchType::regex;
+        try {
+            auto _regex = std::regex(result_string);
+            seek_data->searchData.variant = RegexData{ _regex, result_string.length() };
+        }
+        catch ([[maybe_unused]]std::regex_error& ex) {
+            wxMessageBox("Bad regex syntax", "Error", wxOK | wxICON_ERROR);
+            return;
+        }
+    } else {
+        seek_data->searchData.type = ESearchType::standard;
+        seek_data->searchData.variant = result_string;
+    }
+
+
 
     search_button->Disable();
     seek_data->thread = std::thread([&](){
@@ -264,14 +289,18 @@ void MyFrame::OnResize(wxSizeEvent& event)
     const auto adjustment = adjust_from_480(TEXTBOX_PADDING);
     const auto frame_adjustment = adjust_from_480(FRAME_PADDING);
 
-    auto singleLineInputBoxHeight = regex->GetSize().y;
+    const auto window = wxClientDC(this).GetWindow();
+    const auto window_size = window->GetClientSize();
 
-    input_box->SetSize({ event.m_size.x, event.m_size.y - adjustment - singleLineInputBoxHeight * 2 });
+    const wxPoint center = { window_size.x / 2, window_size.y / 2 };
+
+    auto singleLineInputBoxHeight = regex->GetSize().y + search_button->GetSize().y;
+
+    input_box->SetSize({ event.m_size.x, event.m_size.y - adjustment - singleLineInputBoxHeight  });
 
     auto ibox_y = input_box->GetPosition().y + input_box->GetSize().y;
 
-    regex->SetPosition({ regex->GetPosition().x, ibox_y + frame_adjustment });
-    regex->SetSize({ event.m_size.x, regex->GetSize().y });
+    regex->SetPosition({ center.x - regex->GetSize().x / 2, ibox_y + frame_adjustment});
 
     auto iregex_y = regex->GetPosition().y + regex->GetSize().y;
 

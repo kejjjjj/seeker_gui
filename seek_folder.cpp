@@ -9,8 +9,7 @@
 
 SHFILEINFO shfi_folder;
 
-static void find_folder_recursively(data_thread& data, const std::string_view& source, 
-	const std::string_view& filename, const std::regex* regex)
+static void find_folder_recursively(data_thread& data, const std::string_view& source, const std::string_view& filename)
 {
 	std::vector<std::string> directories;
 	auto& r = data.data;
@@ -26,18 +25,19 @@ static void find_folder_recursively(data_thread& data, const std::string_view& s
 				if (containsNonASCII(entry.path().wstring()))
 					continue;
 
-				auto str = entry.path().string();
-
 				std::lock_guard<std::mutex> lock(data.mtx);
+
+				auto str = entry.path().string();
 
 				r.current_file = str;
 				r.num_searches++;
 
-				if (regex && !std::regex_search(str, *regex)) {
-					continue;
-				}
+				const auto regexOk = data.searchData.type == ESearchType::regex && std::regex_search(str, std::get<1>(data.searchData.variant).regex);
+				const auto fn = fs::get_file_name(str);
+				const auto searchOk = data.searchData.type == ESearchType::standard && fn.contains(filename);
 
-				if (filename == fs::get_file_name(str)) {
+				if (regexOk || searchOk) {
+
 					r.current_file = str;
 
 					auto name = convertToWideString(str.c_str());
@@ -57,7 +57,7 @@ static void find_folder_recursively(data_thread& data, const std::string_view& s
 	}
 
 	for (auto& dir : directories) {
-		find_folder_recursively(data, dir, filename, regex);
+		find_folder_recursively(data, dir, filename);
 	}
 
 	return;
@@ -67,8 +67,7 @@ void find_folder(data_thread& data, const std::string& source, const std::string
 {
 	auto old = steady_clock::now();
 
-	auto regex = std::regex(data.regexStr);
-	find_folder_recursively(data, source, filename, data.regexStr.size() ? &regex : nullptr);
+	find_folder_recursively(data, source, filename);
 
 	auto now = steady_clock::now();
 	std::chrono::duration<decltype(data.data.duration)> difference = now - old;

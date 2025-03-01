@@ -8,8 +8,7 @@
 
 SHFILEINFO shfi;
 #include <shellapi.h>
-static void find_file_recursively(data_thread& data, const std::string_view& source,
-	const std::string_view& filename, const std::regex* regex)
+static void find_file_recursively(data_thread& data, const std::string_view& source, const std::string_view& filename)
 {
 	std::vector<std::string> directories;
 	auto& r = data.data;
@@ -32,25 +31,22 @@ static void find_file_recursively(data_thread& data, const std::string_view& sou
 
 			std::lock_guard<std::mutex> lock(data.mtx);
 
+			str = entry.path().string();
 			r.num_searches++;
 			r.current_file = str;
 
-			if (regex && !std::regex_search(str, *regex)) {
-				continue;
-			}
-
-
-
-			if (fs::get_file_name(str).contains(filename)) {
+			const auto regexOk = data.searchData.type == ESearchType::regex && std::regex_search(str, std::get<1>(data.searchData.variant).regex);
+			
+			const auto fn = fs::get_file_name(str);
+			const auto searchOk = data.searchData.type == ESearchType::standard && fn.contains(filename);
+			
+			if (regexOk || searchOk) {
 				
 				auto name = convertToWideString(str.c_str());
 
 				if (SHGetFileInfo(name.c_str(), 0, &shfi, sizeof(shfi), SHGFI_ICON | SHGFI_SMALLICON)) {
 					r.results.push_back({ str, shfi.hIcon, std::nullopt });
-
 				}
-				
-
 			}
 		}
 	}
@@ -60,7 +56,7 @@ static void find_file_recursively(data_thread& data, const std::string_view& sou
 	}
 	
 	for (auto& dir : directories) {
-		find_file_recursively(data, dir, filename, regex);
+		find_file_recursively(data, dir, filename);
 	}
 
 	return;
@@ -71,8 +67,7 @@ void find_file(data_thread& data, const std::string& source, const std::string f
 
 	auto old = steady_clock::now();
 
-	auto regex = std::regex(data.regexStr);
-	find_file_recursively(data, source, filename, data.regexStr.size() ? &regex : nullptr);
+	find_file_recursively(data, source, filename);
 		
 	auto now = steady_clock::now();
 	std::chrono::duration<decltype(data.data.duration)> difference = now - old;

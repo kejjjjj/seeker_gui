@@ -10,9 +10,9 @@ SHFILEINFO shfi_string;
 
 
 static std::optional<search_positions> parse_file(seek_results_t& results, const std::string_view& file, const std::string_view& target);
+static std::optional<search_positions> parse_file_regex(seek_results_t& results, const std::string_view& file, const RegexData& target);
 
-static void find_string_recursively(data_thread& data, const std::string_view& source,
-	const std::string_view& target, const std::regex* regex)
+static void find_string_recursively(data_thread& data, const std::string_view& source)
 {
 	std::vector<std::string> directories;
 
@@ -38,12 +38,14 @@ static void find_string_recursively(data_thread& data, const std::string_view& s
 			r.current_file = str;
 			r.num_searches++;
 
-			if (regex && !std::regex_search(str, *regex)) {
-				continue;
-			}
+			std::optional<search_positions> positions;
 
+			if (data.searchData.type == ESearchType::standard)
+				positions = parse_file(r, str, std::get<0>(data.searchData.variant));
+			if (data.searchData.type == ESearchType::regex)
+				positions = parse_file_regex(r, str, std::get<1>(data.searchData.variant));
 
-			if (auto v = parse_file(r, str, target)) {
+			if (positions) {
 				auto name = convertToWideString(str.c_str());
 
 				HICON icon = 0;
@@ -52,14 +54,14 @@ static void find_string_recursively(data_thread& data, const std::string_view& s
 					icon = shfi_string.hIcon;
 				}
 
-				for (auto& value : v.value())
+				for (auto& value : *positions)
 					r.results.push_back({ str, icon, value });
 			}
 
 		}
 
 		for (auto& dir : directories) {
-			find_string_recursively(data, dir, target, regex);
+			find_string_recursively(data, dir);
 		}
 	}
 	catch ([[maybe_unused]] std::filesystem::filesystem_error& ex) {
@@ -68,13 +70,11 @@ static void find_string_recursively(data_thread& data, const std::string_view& s
 	return;
 }
 
-void find_string(data_thread& data, const std::string& source, const std::string filename)
+void find_string(data_thread& data, const std::string& source, [[maybe_unused]] const std::string filename)
 {
 	auto old = steady_clock::now();
 
-	auto regex = std::regex(data.regexStr);
-
-	find_string_recursively(data, source, filename, data.regexStr.size() ? &regex : nullptr);
+	find_string_recursively(data, source);
 
 	auto now = steady_clock::now();
 	std::chrono::duration<decltype(data.data.duration)> difference = now - old;
@@ -144,5 +144,44 @@ std::optional<search_positions> parse_file(seek_results_t& results, const std::s
 
 	f.close();
 	return positions.empty() ? std::nullopt : std::make_optional<search_positions>(positions);
+
+}
+
+
+
+std::optional<search_positions> parse_file_regex(seek_results_t& results, const std::string_view& file, const RegexData& target)
+{
+	std::ifstream f;
+	f.open(file, std::ios_base::binary | std::ios_base::in);
+
+	if (!f.is_open()) {
+		return std::nullopt;
+	}
+
+	search_positions matches;
+
+	std::ostringstream oss;
+	oss << f.rdbuf();
+	std::string buff = oss.str();
+
+	try {
+
+		auto begin_it = std::sregex_iterator(buff.cbegin(), buff.cend(), target.regex);
+		auto end_it = std::sregex_iterator();
+
+		matches.reserve(std::distance(begin_it, end_it)); // Reserve memory for performance
+
+		for (auto it = begin_it; it != end_it; ++it) {
+			matches.push_back({ 1, it->position() });
+		}
+
+	}
+	catch ([[maybe_unused]] std::ios_base::failure& ex) {
+		results.num_skips++;
+	}
+	
+
+	f.close();
+	return matches.empty() ? std::nullopt : std::optional<search_positions>{ matches };
 
 }

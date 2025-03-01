@@ -16,7 +16,7 @@
 #include <ShlObj.h>
 
 #include "utils.hpp"
-
+#include "seek_main.hpp"
 
 #define NO_COPY_CONSTRUCTOR(CLASS) const CLASS& operator=(const CLASS&) = delete; \
 CLASS(const CLASS&) = delete
@@ -46,7 +46,7 @@ struct data_thread
 	std::thread thread;
 	seek_results_t data = {};
 	bool active = false;
-	std::string regexStr;
+	CSearchData searchData;
 };
 
 using steady_clock = std::chrono::steady_clock;
