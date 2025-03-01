@@ -1,6 +1,7 @@
 # Seeker GUI Documentation
 
 ![image](https://github.com/kejjjjj/seeker_gui/assets/108032666/31bae513-d832-45e2-8702-834525d9d9fa)
+![image](https://github.com/user-attachments/assets/2af189d6-ea4a-425a-b4c9-78ee1c4c5e72)
 
 ## Introduction
 
